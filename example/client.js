@@ -1,4 +1,4 @@
-var linvoIPC = require("./");
+var linvoIPC = require("../");
 
 linvoIPC.user.sample(function (remote, conn)
 {

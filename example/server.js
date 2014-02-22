@@ -1,4 +1,4 @@
-var LinvoIPC = require("./");
+var LinvoIPC = require("../");
 
 LinvoIPC.defineService("sample", function(remote, conn)
 {
