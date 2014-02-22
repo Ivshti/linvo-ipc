@@ -22,10 +22,10 @@ function fillServices(socketPath, services)
 }
 fillServices(userSocketPath, userServices);
 
-function defineService(name, constructor)
+function defineService(name, constructor, options)
 {
+    var server = dnode(constructor, options);
     var socketPath = path.join(userSocketPath, name+".lipc");
-    var server = dnode(constructor);
     
     try { fs.unlinkSync(socketPath) } catch(e){ };
     server.listen(socketPath);

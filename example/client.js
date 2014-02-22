@@ -1,11 +1,9 @@
 var linvoIPC = require("../");
 
-linvoIPC.user.sample(function (remote, conn)
+linvoIPC.user.sample(function (sample/*, conn*/)
 {
-    var start = Date.now();
-    remote.zing(33, function (n, d) {
+    sample.zing(33, function (n, d) {
         console.log('n=' + n+" at "+d.getTime());
-        console.log("took "+(Date.now()-start));
         //conn.end();
     });
 });
