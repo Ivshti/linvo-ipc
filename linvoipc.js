@@ -10,13 +10,17 @@ mkdirp.sync(userSocketPath);
 var userServices = {},
     systemServices = {};
 
-fs.readdirSync(userSocketPath)
+function fillServices(socketPath, services)
+{
+    fs.readdirSync(socketPath)
     .filter(function(n) { return n.match(".lipc$") })
     .forEach(function(socket)
     {
         var serviceName = path.basename(socket,".lipc");
-        userServices[serviceName] = _.partial(dnode.connect, path.join(userSocketPath, socket));
+        services[serviceName] = _.partial(dnode.connect, path.join(socketPath, socket));
     });
+}
+fillServices(userSocketPath, userServices);
 
 function defineService(name, constructor)
 {
