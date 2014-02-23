@@ -4,6 +4,7 @@ var mkdirp = require("mkdirp");
 var fs = require("fs");
 var _ = require("underscore");
 
+var systemSocketPath = "/var/run/linvo-ipc";
 var userSocketPath = path.join(process.env.HOME, ".linvo-ipc");
 mkdirp.sync(userSocketPath);
 
@@ -23,6 +24,7 @@ function fillServices(socketPath, services)
     });
 }
 fillServices(userSocketPath, userServices);
+fillServices(systemSocketPath, systemServices);
 
 function defineService(name, constructor, options)
 {
@@ -30,10 +32,12 @@ function defineService(name, constructor, options)
     {
         this.service = constructor(remote, conn);
     }, options);
-    var socketPath = path.join(userSocketPath, name+".lipc");
+    
+    var socketPath = path.join(process.getuid() == 0 ? systemSocketPath : userSocketPath, name+".lipc");
     
     try { fs.unlinkSync(socketPath) } catch(e){ };
     server.listen(socketPath);
+    if (process.getuid() == 0) fs.chmodSync(socketPath, "0766");
 }
 
 module.exports = {
