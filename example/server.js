@@ -4,14 +4,15 @@ var EventEmitter = require("events").EventEmitter;
 
 LinvoIPC.defineService("sample", function(remote/*, conn*/)
 {
-    var sample = { };
     // Service constructor
+    var sample = { };
+
     sample.zing = function (n, cb) { cb(n * 100, new Date()) };
     _.extend(sample, new EventEmitter());
     
     setInterval(function()    
     {
-        sample.emit("test", "test str")
+        sample.emit("test", "test str "+Math.random())
     }, 500);
     
     return sample;
