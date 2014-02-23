@@ -3,6 +3,8 @@ var path = require("path");
 var mkdirp = require("mkdirp");
 var fs = require("fs");
 var net = require("net");
+var byline = require("byline");
+var hat = require("hat");
 
 var systemSocketPath = "/var/run/linvo-ipc";
 var userSocketPath = path.join(process.env.HOME, ".linvo-ipc");
@@ -14,7 +16,7 @@ mkdirp.sync(userSocketPath);
 var userServices = {},
     systemServices = {};
 
-function fillServices(socketPath, services)
+function fillServices(socketPath, services, isSystem)
 {
     fs.readdirSync(socketPath)
     .filter(function(n) { return n.match(".lipc$") })
@@ -22,14 +24,26 @@ function fillServices(socketPath, services)
     {
         var serviceName = path.basename(socket,".lipc");
         services[serviceName] = function(cb) {
-            var d = dnode(), c = net.connect(path.join(socketPath, socket));
+            var d = dnode(),
+                c = net.connect(path.join(socketPath, socket));
             d.on("remote", function(remote) { cb(remote.service) });
-            c.pipe(d).pipe(c);
+            
+            if (! isSystem) c.pipe(d).pipe(c);
+            else /* System service: we need authentication */
+            {
+                var token = hat(256,16),
+                    cookiePath = path.join(userSocketPath, serviceName+".auth");
+                fs.writeFile(cookiePath, token, function()
+                {
+                    c.write("auth:"+cookiePath+":"+token+"\n");
+                    c.pipe(d).pipe(c);
+                });
+            }
         }
     });
 }
 fillServices(userSocketPath, userServices);
-fillServices(systemSocketPath, systemServices);
+fillServices(systemSocketPath, systemServices, true);
 
 
 /*
@@ -40,8 +54,11 @@ function authenticate(connection, ready)
     if (process.getuid() != 0)
         return ready();
     
-    console.log("TODO: authenticate");
-    ready();
+    byline.createStream(connection).on("data", function(data)
+    {
+        if (data.toString().match("^auth"))
+            ready();
+    });
 };
 
 function defineService(name, constructor, options)
