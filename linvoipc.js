@@ -2,7 +2,6 @@ var dnode = require("dnode");
 var path = require("path");
 var mkdirp = require("mkdirp");
 var fs = require("fs");
-var _ = require("underscore");
 
 var systemSocketPath = "/var/run/linvo-ipc";
 var userSocketPath = path.join(process.env.HOME, ".linvo-ipc");
