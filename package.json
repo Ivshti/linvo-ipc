@@ -1,7 +1,7 @@
 {
   "name": "linvoipc",
   "preferGlobal": true,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Ivo Georgiev <ivo@linvo.com>",
   "description": "LinvoIPC - an easy mechanism for inter-process communication",
   "main": "./linvoipc",
