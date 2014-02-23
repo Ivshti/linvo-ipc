@@ -17,14 +17,19 @@ function fillServices(socketPath, services)
     .forEach(function(socket)
     {
         var serviceName = path.basename(socket,".lipc");
-        services[serviceName] = _.partial(dnode.connect, path.join(socketPath, socket));
+        services[serviceName] = function(cb) {
+            dnode.connect(path.join(socketPath, socket), function(remote, conn) { cb(remote.service) });
+        }
     });
 }
 fillServices(userSocketPath, userServices);
 
 function defineService(name, constructor, options)
 {
-    var server = dnode(constructor, options);
+    var server = dnode(function(remote, conn)
+    {
+        this.service = constructor(remote, conn);
+    }, options);
     var socketPath = path.join(userSocketPath, name+".lipc");
     
     try { fs.unlinkSync(socketPath) } catch(e){ };
