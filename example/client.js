@@ -6,4 +6,9 @@ linvoIPC.user.sample(function (sample/*, conn*/)
         console.log('n=' + n+" at "+d.getTime());
         //conn.end();
     });
+    
+    sample.on("test", function(val)
+    {
+        console.log("sample emitted test: "+val);
+    });
 });
