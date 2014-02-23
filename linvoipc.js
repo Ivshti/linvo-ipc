@@ -33,8 +33,9 @@ function fillServices(socketPath, services, isSystem)
             {
                 var token = hat(256,16),
                     cookiePath = path.join(userSocketPath, serviceName+".auth");
-                fs.writeFile(cookiePath, token, function()
+                fs.writeFile(cookiePath, token, function(err)
                 {
+                    if (err) console.error(err);
                     c.write("auth:"+cookiePath+":"+token+"\n");
                     c.pipe(d).pipe(c);
                 });
@@ -51,14 +52,36 @@ fillServices(systemSocketPath, systemServices, true);
  */
 function authenticate(connection, ready)
 {
-    if (process.getuid() != 0)
+    if (process.getuid() != 0) /* No authentication for user services */
         return ready();
     
-    byline.createStream(connection).on("data", function(data)
+    var stream = byline.createStream(connection);
+    var onLine = function(data)
     {
-        if (data.toString().match("^auth"))
-            ready();
-    });
+        var line = data.toString();
+        if (! line.match("^auth")) return;
+        
+        var cookiePath = line.split(":")[1];
+        var cookieToken = line.split(":")[2];
+
+        fs.readFile(cookiePath, function(err, buf)
+        {
+            if (err) console.error(err);
+            if (err || buf.toString() != cookieToken)
+            {
+                console.log("Authentication error: cookie/token mismatch");
+                return connection.end();
+            }
+
+            fs.stat(cookiePath, function(err, stat)
+            {
+                /* only this for now; TODO: more */
+                ready({ uid: stat.uid });
+                stream.removeListener("data", onLine);
+            });
+        });
+    };
+    stream.on("data", onLine);
 };
 
 function defineService(name, constructor, options)
