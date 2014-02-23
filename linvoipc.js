@@ -6,6 +6,12 @@ var net = require("net");
 var byline = require("byline");
 var hat = require("hat");
 
+
+var COOKIE_TTL = 5*1000;
+
+/*
+ * Basic directories
+ */
 var systemSocketPath = "/var/run/linvo-ipc";
 var userSocketPath = path.join(process.env.HOME, ".linvo-ipc");
 mkdirp.sync(userSocketPath);
@@ -23,15 +29,18 @@ function fillServices(socketPath, services, isSystem)
     .forEach(function(socket)
     {
         var serviceName = path.basename(socket,".lipc");
-        services[serviceName] = function(cb) {
+        services[serviceName] = function(cb) 
+        {
             var d = dnode(),
                 c = net.connect(path.join(socketPath, socket));
             d.on("remote", function(remote) { cb(remote.service) });
             
             if (! isSystem) c.pipe(d).pipe(c);
-            else /* System service: we need authentication */
+            else
             {
-                var token = hat(256,16),
+                /* Connecting to a system service: we need authentication 
+                 * Authentication consists of proving we can create a file under a certain UID */
+                var token = hat(256, 16),
                     cookiePath = path.join(userSocketPath, serviceName+".auth");
                 fs.writeFile(cookiePath, token, function(err)
                 {
@@ -55,6 +64,12 @@ function authenticate(connection, ready)
     if (process.getuid() != 0) /* No authentication for user services */
         return ready();
     
+    var authErr = function(msg)
+    {
+        console.log(msg);
+        connection.end();
+    };
+    
     var stream = byline.createStream(connection);
     var onLine = function(data)
     {
@@ -68,13 +83,18 @@ function authenticate(connection, ready)
         {
             if (err) console.error(err);
             if (err || buf.toString() != cookieToken)
-            {
-                console.log("Authentication error: cookie/token mismatch");
-                return connection.end();
-            }
+                return authErr("Authentication error: cookie/token mismatch");
 
             fs.stat(cookiePath, function(err, stat)
             {
+                if (Date.now() - stat.mtime.getTime() > COOKIE_TTL)
+                    return authErr("Authentication error: cookie expired");
+                
+                /*
+                 * TODO: one more security check: if the cookie is in the user's home directory
+                 * this will happen after we read /etc/passwd to find more info about the user
+                 */
+                
                 /* only this for now; TODO: more */
                 ready({ uid: stat.uid });
                 stream.removeListener("data", onLine);
@@ -87,8 +107,8 @@ function authenticate(connection, ready)
 function defineService(name, constructor, options)
 {
     var socketPath = path.join(process.getuid() == 0 ? systemSocketPath : userSocketPath, name+".lipc");
-    
     try { fs.unlinkSync(socketPath) } catch(e){ };
+
     net.createServer(function(c)
     {
         authenticate(c, function(user)
