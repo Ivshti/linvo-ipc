@@ -13,6 +13,8 @@ var COOKIE_TTL = 5*1000;
  * Basic directories
  */
 var systemSocketPath = "/var/run/linvo-ipc";
+if (process.getuid() == 0) mkdirp.sync(systemSocketPath);
+
 var userSocketPath = path.join(process.env.HOME, ".linvo-ipc");
 mkdirp.sync(userSocketPath);
 
